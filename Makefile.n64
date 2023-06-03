@@ -1,0 +1,39 @@
+D=1
+N64_DFS_OFFSET=2M
+SOURCE_DIR=.
+BUILD_DIR=build
+include $(N64_INST)/include/n64.mk
+
+SOURCES := . n64
+
+all: nettest_server.z64 nettest_client.z64
+.PHONY: all
+
+CFILES  := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
+OBJS		:=	$(patsubst %.c,$(BUILD_DIR)/%.o,$(CFILES))
+
+CFLAGS += $(foreach dir,$(SOURCES),-I$(dir))
+CFLAGS += $(EXTRA_CFLAGS)
+$(BUILD_DIR)/server/%.o: %.c 
+	@mkdir -p $(dir $@)
+	@echo "    [CC] $<"
+	$(CC) -c $(CFLAGS) -DGPLAYER_INDEX=0 -o $@ $<
+$(BUILD_DIR)/client/%.o: %.c 
+	@mkdir -p $(dir $@)
+	@echo "    [CC] $<"
+	$(CC) -c $(CFLAGS) -DGPLAYER_INDEX=1 -o $@ $<
+
+nettest_server.z64: N64_ROM_TITLE="PLAYER1"
+nettest_client.z64: N64_ROM_TITLE="PLAYER2"
+
+$(BUILD_DIR)/nettest_server.elf: $(patsubst %.c,$(BUILD_DIR)/server/%.o,$(CFILES))
+$(BUILD_DIR)/nettest_client.elf: $(patsubst %.c,$(BUILD_DIR)/client/%.o,$(CFILES))
+
+clean:
+	rm -rf $(BUILD_DIR)
+	rm -f *.z64
+	find . -name '*.o' -delete
+	find . -name '*.d' -delete
+.PHONY: clean
+
+-include $(wildcard $(BUILD_DIR)/*.d)
